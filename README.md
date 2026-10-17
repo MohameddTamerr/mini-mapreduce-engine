@@ -239,6 +239,20 @@ Ran 7 tests in 0.012s
 OK
 ```
 
+## Acknowledgements & Special Thanks
+
+Special thanks and sincere gratitude to **[Dr. Ahmed Said](https://github.com/dr-ahmed-said)** for his mentorship, inspiration, and invaluable guidance throughout this distributed computing and MapReduce project.
+
+<p align="left">
+  <a href="https://github.com/dr-ahmed-said">
+    <img src="https://avatars.githubusercontent.com/u/12073686?v=4" width="90" height="90" style="border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" alt="Dr. Ahmed Said" />
+  </a>
+</p>
+
+- **Supervisor & Mentor**: **[Dr. Ahmed Said](https://github.com/dr-ahmed-said)**
+- **Role**: Assistant Professor in Artificial Intelligence / Computer Science
+- **GitHub Profile**: [@dr-ahmed-said](https://github.com/dr-ahmed-said)
+
 ---
 
 ## License

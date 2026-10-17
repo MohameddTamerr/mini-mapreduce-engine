@@ -2042,3 +2042,34 @@ else:
             5. **Shuffle, Sort & Reduce**: Grouping, key-sorting, and writing `reducer_0.txt` and `reducer_1.txt`.
             """
         )
+
+    # Special Acknowledgements Card
+    with st.container(border=True):
+        st.markdown(
+            """
+            <div style="display:flex; align-items:center; gap:20px; padding:0.4rem 0.2rem;">
+                <a href="https://github.com/dr-ahmed-said" target="_blank" rel="noopener noreferrer">
+                    <img src="https://avatars.githubusercontent.com/u/12073686?v=4" 
+                         alt="Dr. Ahmed Said" 
+                         style="width:84px; height:84px; border-radius:50%; border:3px solid #285C42; box-shadow:0 4px 14px rgba(40,92,66,0.18);" />
+                </a>
+                <div>
+                    <div style="font-size:0.72rem; font-weight:700; color:#285C42; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:2px;">Special Thanks & Mentorship</div>
+                    <h3 style="margin:0 0 3px 0; font-family:'Playfair Display',serif; color:#18232B; font-size:1.25rem;">
+                        <a href="https://github.com/dr-ahmed-said" target="_blank" rel="noopener noreferrer" style="color:#18232B; text-decoration:none;">
+                            Dr. Ahmed Said
+                        </a>
+                    </h3>
+                    <p style="margin:0 0 8px 0; color:#475569; font-size:0.86rem; line-height:1.4;">
+                        Assistant Professor in Artificial Intelligence / Computer Science.<br>
+                        Sincere gratitude for your guidance, inspiration, and continuous support throughout this distributed systems project.
+                    </p>
+                    <a href="https://github.com/dr-ahmed-said" target="_blank" rel="noopener noreferrer" 
+                       style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:700; color:#285C42; background:#eaf4ed; padding:4px 12px; border-radius:6px; text-decoration:none; border:1px solid #c7dec9;">
+                        View GitHub Profile (@dr-ahmed-said) ↗
+                    </a>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
