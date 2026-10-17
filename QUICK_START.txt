@@ -1,0 +1,26 @@
+MINI MAPREDUCE STUDIO - QUICK START (Windows / VS Code)
+=====================================================
+
+1) Extract the ZIP and open Mini_MapReduce_Complete folder in VS Code.
+2) Open Terminal from VS Code.
+3) Install GUI libraries:
+   python -m pip install -r requirements.txt
+4) Run the Streamlit GUI (SEPARATE from main.py):
+   python -m streamlit run app.py
+5) Or run the terminal version:
+   python main.py
+6) Try the 12 sample files in the input/ directory.
+7) Output will be TWO .txt files in output/ (one per reducer).
+
+For a detailed Arabic explanation, open README.md in VS Code.
+
+PROJECT STRUCTURE:
+    engine.py      --> MapReduce implementation
+    main.py        --> CLI
+    app.py         --> Streamlit GUI
+    input/         --> 12 long ready-made sample .txt files
+    output/        --> reducer_0.txt and reducer_1.txt
+    tests/         --> unit tests
+    README.md      --> Detailed Arabic explanations
+
+NO HADOOP. NO SPARK.
