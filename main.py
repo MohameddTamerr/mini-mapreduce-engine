@@ -1,4 +1,28 @@
-"""Command-line version. Streamlit GUI lives in app.py, NOT main.py."""
+"""Command-line version. Streamlit GUI lives in app.py.
+
+If launched inside Streamlit (e.g. Streamlit Cloud default), this automatically
+delegates execution to app.py.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+# Automatic delegation to app.py when launched via Streamlit
+try:
+    from streamlit.runtime import exists as _st_exists
+
+    if _st_exists():
+        import runpy
+
+        app_file = Path(__file__).resolve().parent / "app.py"
+        runpy.run_path(str(app_file), run_name="__main__")
+        sys.exit(0)
+except SystemExit:
+    raise
+except Exception:
+    pass
 
 import argparse
 from engine import run_folder
