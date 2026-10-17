@@ -29,6 +29,8 @@ from engine import RunResult, partitioner, run_folder, run_mapreduce
 BASE_DIR = Path(__file__).resolve().parent
 INPUT_DIR = BASE_DIR / "input"
 OUTPUT_DIR = BASE_DIR / "output"
+SAMPLE_DIR = BASE_DIR / "sample_data"
+
 
 # -----------------------------------------------------------------------------
 # Page Configuration
@@ -763,6 +765,130 @@ def count_file_words(path: Path) -> int:
         return 0
 
 
+def load_sample_dataset(target_dir: Path) -> int:
+    target_dir.mkdir(parents=True, exist_ok=True)
+    count = 0
+    import shutil
+    source_dir = SAMPLE_DIR if SAMPLE_DIR.is_dir() else INPUT_DIR
+    if source_dir.is_dir():
+        for f in source_dir.glob("*.txt"):
+            dest_file = target_dir / f.name
+            shutil.copy2(f, dest_file)
+            count += 1
+    return count
+
+
+def clear_folder_txt(target_dir: Path) -> int:
+    count = 0
+    if target_dir.is_dir():
+        for f in target_dir.glob("*.txt"):
+            try:
+                f.unlink()
+                count += 1
+            except Exception:
+                pass
+    return count
+
+
+def render_file_upload_strip(page_key: str, active_folder: Path, active_files: list[Path]) -> None:
+    uploader_key = f"uploader_{page_key}"
+    last_uploaded_key = f"last_uploaded_names_{page_key}"
+
+    svg_cloud_up = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#285C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="13" x2="12" y2="15"></line></svg>'
+
+    total_words_active = sum(count_file_words(p) for p in active_files) if active_files else 0
+
+    if active_files:
+        status_text = f"✓ {len(active_files)} Splits Active ({total_words_active:,} words)"
+        badge_style = "background:#eaf4ed; color:#285C42; border:1px solid #c7dec9;"
+    else:
+        status_text = "0 Splits Active — Drop files or load samples"
+        badge_style = "background:#fff7ed; color:#c2410c; border:1px solid #fed7aa;"
+
+    with st.container(border=True):
+        st.markdown(
+            f"""
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px; height:36px; border-radius:8px; background:#eaf4ed; display:grid; place-items:center;">
+                        {svg_cloud_up}
+                    </div>
+                    <div>
+                        <div style="font-weight:700; color:#18232B; font-size:0.95rem;">Dataset & File Drag-and-Drop</div>
+                        <div style="font-size:0.76rem; color:#64748b;">Drop single or multiple .txt files directly into the MapReduce engine or load the benchmark samples.</div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="{badge_style} font-weight:700; font-size:0.78rem; padding:4px 10px; border-radius:6px; display:inline-block;">
+                        {status_text}
+                    </span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        c_up, c_act = st.columns([1.5, 1], gap="medium")
+        with c_up:
+            uploaded_files = st.file_uploader(
+                "Upload .txt files",
+                type=["txt"],
+                accept_multiple_files=True,
+                key=uploader_key,
+                label_visibility="collapsed",
+                help="Drag and drop one or more .txt files. Each file represents an independent input split."
+            )
+            if uploaded_files:
+                current_names = [f.name for f in uploaded_files]
+                if st.session_state.get(last_uploaded_key) != current_names:
+                    active_folder.mkdir(parents=True, exist_ok=True)
+                    for uf in uploaded_files:
+                        dest_file = active_folder / uf.name
+                        dest_file.write_bytes(uf.getvalue())
+                        if "hidden_files" in st.session_state:
+                            st.session_state["hidden_files"].discard(uf.name)
+                    st.session_state[last_uploaded_key] = current_names
+                    st.session_state.pop("last_run", None)
+                    st.toast(f"Uploaded {len(current_names)} file(s) to {active_folder.name}/", icon=":material/check:")
+                    st.rerun()
+
+        with c_act:
+            c_btn1, c_btn2 = st.columns(2, gap="small")
+            with c_btn1:
+                if st.button("Load Samples", icon=":material/dataset:", key=f"btn_samples_{page_key}", use_container_width=True, help="Load 11 pre-packaged benchmark text splits"):
+                    n_loaded = load_sample_dataset(active_folder)
+                    if "hidden_files" in st.session_state:
+                        st.session_state["hidden_files"].clear()
+                    st.session_state.pop("last_run", None)
+                    st.toast(f"Loaded {n_loaded} sample text splits!", icon=":material/check:")
+                    st.rerun()
+            with c_btn2:
+                if st.button("Clear Files", icon=":material/delete_sweep:", key=f"btn_clear_{page_key}", use_container_width=True, help="Remove all .txt splits from input folder"):
+                    n_cleared = clear_folder_txt(active_folder)
+                    if "hidden_files" in st.session_state:
+                        st.session_state["hidden_files"].clear()
+                    st.session_state.pop("last_run", None)
+                    st.toast(f"Cleared {n_cleared} file(s)", icon=":material/check:")
+                    st.rerun()
+
+            with st.expander("📁 Custom Folder Path", expanded=False):
+                c_fin, c_fok = st.columns([2.5, 1])
+                with c_fin:
+                    fld_candidate = st.text_input(
+                        "Input Folder",
+                        value=st.session_state.get("input_folder_path", "input/"),
+                        key=f"strip_fld_in_{page_key}",
+                        label_visibility="collapsed"
+                    )
+                with c_fok:
+                    if st.button("Set", key=f"btn_set_fld_{page_key}", use_container_width=True):
+                        st.session_state["input_folder_path"] = fld_candidate
+                        st.session_state.pop("last_run", None)
+                        st.toast(f"Active folder set to: {fld_candidate}", icon=":material/check:")
+                        st.rerun()
+
+
+
 # -----------------------------------------------------------------------------
 # Component: Header matching reference
 # -----------------------------------------------------------------------------
@@ -958,13 +1084,19 @@ def make_stage_timing_figure(elapsed: float) -> go.Figure:
 # -----------------------------------------------------------------------------
 # Page: Home / Dashboard
 # -----------------------------------------------------------------------------
-def render_home_page(result: RunResult | None, active_files: list[Path], threads: int) -> None:
+def render_home_page(result: RunResult | None, active_files: list[Path], threads: int, active_folder: Path | None = None) -> None:
+    if active_folder is None:
+        active_folder = resolve_folder(st.session_state.get("input_folder_path", "input/"))
+
     render_editorial_header(
         page_title="Mini MapReduce",
         subtitle="Word Count using MapReduce Concepts",
         description="Upload multiple text files and explore each stage of the MapReduce pipeline with clear visualizations and real results.",
         active_stage="Map" if result else "Input",
     )
+
+    # 1. Dataset & Drag-and-Drop Ingestion Strip
+    render_file_upload_strip(page_key="home_page", active_folder=active_folder, active_files=active_files)
 
     if result:
         tot_files = len(result.traces)
@@ -973,7 +1105,7 @@ def render_home_page(result: RunResult | None, active_files: list[Path], threads
         exec_time = result.elapsed_seconds
     else:
         tot_files = len(active_files)
-        tot_words = sum(count_file_words(p) for p in active_files) if active_files else 4612
+        tot_words = sum(count_file_words(p) for p in active_files) if active_files else 0
         uniq_words = 0
         exec_time = 0.0
 
@@ -982,17 +1114,30 @@ def render_home_page(result: RunResult | None, active_files: list[Path], threads
 
     if not result:
         with st.container():
-            st.markdown(
-                """
-                <div style="background:#ffffff; border:1px solid #d8e5d5; border-radius:14px; padding:1.2rem 1.6rem; margin-bottom:1.1rem; text-align:center;">
-                    <h3 style="font-family:'Playfair Display',serif; color:#18232B; margin:0 0 0.4rem; font-size:1.3rem;">Ready to Run Pipeline</h3>
-                    <p style="color:#64748b; font-size:0.86rem; max-width:650px; margin:0 auto 0.8rem;">
-                        Click <b>Run MapReduce</b> in the sidebar to process splits, execute parallel mappers, and reveal the interactive charts.
-                    </p>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            if active_files:
+                st.markdown(
+                    """
+                    <div style="background:#ffffff; border:1px solid #d8e5d5; border-radius:14px; padding:1.2rem 1.6rem; margin-bottom:1.1rem; text-align:center;">
+                        <h3 style="font-family:'Playfair Display',serif; color:#18232B; margin:0 0 0.4rem; font-size:1.3rem;">Ready to Run Pipeline</h3>
+                        <p style="color:#64748b; font-size:0.86rem; max-width:650px; margin:0 auto 0.8rem;">
+                            Click <b>Run MapReduce</b> in the sidebar or go to the <b>Run MapReduce</b> page to process splits, execute parallel mappers, and reveal all interactive charts.
+                        </p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    """
+                    <div style="background:#ffffff; border:1px solid #fed7aa; border-radius:14px; padding:1.2rem 1.6rem; margin-bottom:1.1rem; text-align:center;">
+                        <h3 style="font-family:'Playfair Display',serif; color:#9a3412; margin:0 0 0.4rem; font-size:1.3rem;">No Input Files Loaded</h3>
+                        <p style="color:#78350f; font-size:0.86rem; max-width:650px; margin:0 auto 0.8rem;">
+                            Please drag & drop one or more .txt files into the uploader above, or click <b>Load Samples</b> to test with benchmark files.
+                        </p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
     col_w, col_d, col_t = st.columns([1.1, 0.95, 0.95], gap="medium")
 
@@ -1010,45 +1155,46 @@ def render_home_page(result: RunResult | None, active_files: list[Path], threads
 
             if result and result.totals:
                 top_items = sorted(result.totals.items(), key=lambda x: (-x[1], x[0]))[:top_n]
+                words_x = [c for _, c in reversed(top_items)]
+                words_y = [w for w, _ in reversed(top_items)]
+                word_colors = ["#285C42" if (sum(ord(ch) for ch in w) % 2 == 0) else "#52b788" for w in words_y]
+
+                fig_top = go.Figure(
+                    data=[
+                        go.Bar(
+                            x=words_x,
+                            y=words_y,
+                            orientation="h",
+                            marker=dict(color=word_colors, line=dict(color="#ffffff", width=1)),
+                            text=[f"{c:,}" for c in words_x],
+                            textposition="outside",
+                            textfont=dict(color="#18232B", size=10, family="Plus Jakarta Sans", weight="bold"),
+                            hovertemplate="<b>'%{y}'</b><br>Count: <b>%{x:,}</b><br>Destination: <b>Reducer %{customdata}</b><extra></extra>",
+                            customdata=[sum(ord(ch) for ch in w) % 2 for w in words_y],
+                        )
+                    ]
+                )
+                fig_top.update_layout(
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(l=10, r=15, t=10, b=10),
+                    height=245,
+                    xaxis=dict(showgrid=True, gridcolor="#f1f5f9", tickfont=dict(size=10)),
+                    yaxis=dict(tickfont=dict(size=10, family="Plus Jakarta Sans", color="#18232B")),
+                )
+                st.plotly_chart(fig_top, use_container_width=True, config={"displayModeBar": False})
             else:
-                default_full = [
-                    ("and", 241), ("the", 237), ("a", 207), ("can", 96), ("team", 66),
-                    ("in", 64), ("to", 60), ("of", 57), ("should", 57), ("how", 52),
-                    ("is", 51), ("data", 48), ("with", 45), ("for", 42), ("processing", 39),
-                    ("map", 36), ("reduce", 35), ("splits", 32), ("thread", 30), ("words", 28)
-                ]
-                top_items = default_full[:top_n]
-
-            # Interactive horizontal bar chart for top words
-            words_x = [c for _, c in reversed(top_items)]
-            words_y = [w for w, _ in reversed(top_items)]
-            # Color by reducer assignment (sum(ord) % 2)
-            word_colors = ["#285C42" if (sum(ord(ch) for ch in w) % 2 == 0) else "#52b788" for w in words_y]
-
-            fig_top = go.Figure(
-                data=[
-                    go.Bar(
-                        x=words_x,
-                        y=words_y,
-                        orientation="h",
-                        marker=dict(color=word_colors, line=dict(color="#ffffff", width=1)),
-                        text=[f"{c:,}" for c in words_x],
-                        textposition="outside",
-                        textfont=dict(color="#18232B", size=10, family="Plus Jakarta Sans", weight="bold"),
-                        hovertemplate="<b>'%{y}'</b><br>Count: <b>%{x:,}</b><br>Destination: <b>Reducer %{customdata}</b><extra></extra>",
-                        customdata=[sum(ord(ch) for ch in w) % 2 for w in words_y],
-                    )
-                ]
-            )
-            fig_top.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                margin=dict(l=10, r=15, t=10, b=10),
-                height=245,
-                xaxis=dict(showgrid=True, gridcolor="#f1f5f9", tickfont=dict(size=10)),
-                yaxis=dict(tickfont=dict(size=10, family="Plus Jakarta Sans", color="#18232B")),
-            )
-            st.plotly_chart(fig_top, use_container_width=True, config={"displayModeBar": False})
+                st.markdown(
+                    """
+                    <div style="background:#ffffff; border:1px dashed #d1dcce; border-radius:10px; padding:2.6rem 1rem; text-align:center; height:245px; display:flex; flex-direction:column; justify-content:center;">
+                        <div style="color:#285C42; font-weight:700; font-size:0.95rem; margin-bottom:4px;">Pipeline Awaiting Execution</div>
+                        <div style="color:#64748b; font-size:0.8rem; max-width:300px; margin:0 auto;">
+                            Execute MapReduce to see the top word counts and reducer partition routes.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
     # Column 2: Donut Chart with Interactive Legend
     with col_d:
@@ -1057,10 +1203,23 @@ def render_home_page(result: RunResult | None, active_files: list[Path], threads
                 '<div style="font-weight:700; font-size:0.92rem; color:#18232B; margin-bottom:6px;">Word Distribution Across Reducers</div>',
                 unsafe_allow_html=True,
             )
-            r0 = len(result.reduced[0]) if result else 366
-            r1 = len(result.reduced[1]) if result else 375
-            fig_donut = make_sage_donut_figure(r0, r1)
-            st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
+            if result:
+                r0 = len(result.reduced[0])
+                r1 = len(result.reduced[1])
+                fig_donut = make_sage_donut_figure(r0, r1)
+                st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
+            else:
+                st.markdown(
+                    """
+                    <div style="background:#ffffff; border:1px dashed #d1dcce; border-radius:10px; padding:2.5rem 1rem; text-align:center; height:245px; display:flex; flex-direction:column; justify-content:center;">
+                        <div style="color:#285C42; font-weight:700; font-size:0.95rem; margin-bottom:4px;">Awaiting Partitioning</div>
+                        <div style="color:#64748b; font-size:0.8rem; max-width:280px; margin:0 auto;">
+                            Words will be partitioned into Reducer 0 and Reducer 1 via <code>sum(ord) % 2</code> upon execution.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
     # Column 3: Timing per Stage (in Milliseconds)
     with col_t:
@@ -1069,8 +1228,21 @@ def render_home_page(result: RunResult | None, active_files: list[Path], threads
                 '<div style="font-weight:700; font-size:0.92rem; color:#18232B; margin-bottom:6px;">Stage Latency (Milliseconds)</div>',
                 unsafe_allow_html=True,
             )
-            fig_timing = make_stage_timing_figure(result.elapsed_seconds if result else 0.46)
-            st.plotly_chart(fig_timing, use_container_width=True, config={"displayModeBar": False})
+            if result:
+                fig_timing = make_stage_timing_figure(result.elapsed_seconds)
+                st.plotly_chart(fig_timing, use_container_width=True, config={"displayModeBar": False})
+            else:
+                st.markdown(
+                    """
+                    <div style="background:#ffffff; border:1px dashed #d1dcce; border-radius:10px; padding:2.5rem 1rem; text-align:center; height:245px; display:flex; flex-direction:column; justify-content:center;">
+                        <div style="color:#285C42; font-weight:700; font-size:0.95rem; margin-bottom:4px;">Awaiting Latency Metrics</div>
+                        <div style="color:#64748b; font-size:0.8rem; max-width:280px; margin:0 auto;">
+                            Stage latency breakdown in milliseconds will display here after running the pipeline.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
     # Bottom Rows
     svg_doc_mini = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#285C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>'
@@ -1080,18 +1252,21 @@ def render_home_page(result: RunResult | None, active_files: list[Path], threads
             st.markdown(
                 '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">'
                 '<span style="font-weight:700; font-size:0.92rem; color:#18232B;">Input Files</span>'
-                '<span style="font-size:0.75rem; color:#64748b;">Active splits</span>'
+                f'<span style="font-size:0.75rem; color:#64748b;">{len(active_files)} Active splits</span>'
                 "</div>",
                 unsafe_allow_html=True,
             )
-            cards_html = '<div style="display:flex; flex-wrap:wrap; gap:8px;">'
-            for p in active_files[:4]:
-                w_count = count_file_words(p)
-                cards_html += f'<div class="file-mini-card">{svg_doc_mini}<div><b>{p.name}</b><br><span style="color:#64748b;">{w_count} words</span></div></div>'
-            if len(active_files) > 4:
-                cards_html += f'<div class="file-mini-card" style="justify-content:center; color:#285C42; font-weight:700;">+{len(active_files) - 4} more files</div>'
-            cards_html += "</div>"
-            st.markdown(cards_html, unsafe_allow_html=True)
+            if not active_files:
+                st.markdown('<div style="color:#94a3b8; font-size:0.82rem; padding:12px 0;">No input files in folder. Drop files above to begin.</div>', unsafe_allow_html=True)
+            else:
+                cards_html = '<div style="display:flex; flex-wrap:wrap; gap:8px;">'
+                for p in active_files[:4]:
+                    w_count = count_file_words(p)
+                    cards_html += f'<div class="file-mini-card">{svg_doc_mini}<div><b>{p.name}</b><br><span style="color:#64748b;">{w_count:,} words</span></div></div>'
+                if len(active_files) > 4:
+                    cards_html += f'<div class="file-mini-card" style="justify-content:center; color:#285C42; font-weight:700;">+{len(active_files) - 4} more files</div>'
+                cards_html += "</div>"
+                st.markdown(cards_html, unsafe_allow_html=True)
 
     with c_out_row:
         with st.container(border=True):
@@ -1102,15 +1277,15 @@ def render_home_page(result: RunResult | None, active_files: list[Path], threads
                 "</div>",
                 unsafe_allow_html=True,
             )
-            out_r0 = len(result.reduced[0]) if result else 366
-            out_r1 = len(result.reduced[1]) if result else 375
+            out_r0_text = f"{len(result.reduced[0]):,} words" if result else "0 words (pending run)"
+            out_r1_text = f"{len(result.reduced[1]):,} words" if result else "0 words (pending run)"
 
             out_html = (
                 f'<div style="display:flex; flex-direction:column; gap:8px;">'
                 f'<div class="file-mini-card" style="justify-content:space-between;">'
-                f'<div style="display:flex; align-items:center; gap:8px;">{svg_doc_mini}<b>reducer_0.txt</b></div><div style="color:#285C42; font-weight:700;">{out_r0:,} words</div></div>'
+                f'<div style="display:flex; align-items:center; gap:8px;">{svg_doc_mini}<b>reducer_0.txt</b></div><div style="color:#285C42; font-weight:700;">{out_r0_text}</div></div>'
                 f'<div class="file-mini-card" style="justify-content:space-between;">'
-                f'<div style="display:flex; align-items:center; gap:8px;">{svg_doc_mini}<b>reducer_1.txt</b></div><div style="color:#285C42; font-weight:700;">{out_r1:,} words</div></div>'
+                f'<div style="display:flex; align-items:center; gap:8px;">{svg_doc_mini}<b>reducer_1.txt</b></div><div style="color:#285C42; font-weight:700;">{out_r1_text}</div></div>'
                 f'</div>'
             )
             st.markdown(out_html, unsafe_allow_html=True)
@@ -1143,12 +1318,12 @@ def render_home_page(result: RunResult | None, active_files: list[Path], threads
                 ascii_sum = sum(ord(c) for c in searched_word)
                 dest_reducer = ascii_sum % 2
                 
-                # Check occurrence count if result is available
-                occ_count = 0
                 if result and result.totals:
                     occ_count = result.totals.get(searched_word, 0)
+                    count_sub = "occurrences"
                 else:
-                    occ_count = 14 if searched_word in ("technology", "data", "mapreduce") else 3
+                    occ_count = 0
+                    count_sub = "pending run"
 
                 badge_color = "#285C42" if dest_reducer == 0 else "#2563eb"
                 badge_bg = "#eaf4ed" if dest_reducer == 0 else "#eff6ff"
@@ -1159,7 +1334,7 @@ def render_home_page(result: RunResult | None, active_files: list[Path], threads
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:8px;">
                             <div>
                                 <span style="font-size:0.7rem; color:#64748b; font-weight:600; text-transform:uppercase;">Word Count</span>
-                                <div style="font-size:1.15rem; font-weight:800; color:#18232B;">{occ_count:,} <span style="font-size:0.75rem; color:#94a3b8; font-weight:400;">occurrences</span></div>
+                                <div style="font-size:1.15rem; font-weight:800; color:#18232B;">{occ_count:,} <span style="font-size:0.75rem; color:#94a3b8; font-weight:400;">{count_sub}</span></div>
                             </div>
                             <div>
                                 <span style="font-size:0.7rem; color:#64748b; font-weight:600; text-transform:uppercase;">Partition Route</span>
@@ -1192,40 +1367,49 @@ def render_home_page(result: RunResult | None, active_files: list[Path], threads
                 file_labels = [t.filename.replace(".txt", "") for t in result.traces[:6]]
                 raw_words = [len(t.pairs) for t in result.traces[:6]]
                 comb_words = [len(t.combined) for t in result.traces[:6]]
-            else:
-                file_labels = [f"0{i}_doc" for i in range(1, 7)]
-                raw_words = [398, 365, 402, 371, 412, 388]
-                comb_words = [240, 218, 255, 230, 260, 242]
 
-            fig_comp = go.Figure(
-                data=[
-                    go.Bar(
-                        name="Raw Words (Map Ingestion)",
-                        x=file_labels,
-                        y=raw_words,
-                        marker=dict(color="#cbd5e1", line=dict(color="#ffffff", width=1)),
-                        hovertemplate="<b>%{x}</b><br>Raw Words: <b>%{y:,}</b><extra></extra>",
-                    ),
-                    go.Bar(
-                        name="Unique Words (After Combine)",
-                        x=file_labels,
-                        y=comb_words,
-                        marker=dict(color="#285C42", line=dict(color="#ffffff", width=1)),
-                        hovertemplate="<b>%{x}</b><br>Combined: <b>%{y:,}</b><extra></extra>",
-                    ),
-                ]
-            )
-            fig_comp.update_layout(
-                barmode="group",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                margin=dict(l=10, r=10, t=10, b=10),
-                height=200,
-                legend=dict(orientation="h", y=1.2, x=0.05, font=dict(size=10, color="#475569")),
-                xaxis=dict(tickfont=dict(size=10, family="Plus Jakarta Sans", color="#334155"), showgrid=False),
-                yaxis=dict(showgrid=True, gridcolor="#f1f5f9", tickfont=dict(size=9)),
-            )
-            st.plotly_chart(fig_comp, use_container_width=True, config={"displayModeBar": False})
+                fig_comp = go.Figure(
+                    data=[
+                        go.Bar(
+                            name="Raw Words (Map Ingestion)",
+                            x=file_labels,
+                            y=raw_words,
+                            marker=dict(color="#cbd5e1", line=dict(color="#ffffff", width=1)),
+                            hovertemplate="<b>%{x}</b><br>Raw Words: <b>%{y:,}</b><extra></extra>",
+                        ),
+                        go.Bar(
+                            name="Unique Words (After Combine)",
+                            x=file_labels,
+                            y=comb_words,
+                            marker=dict(color="#285C42", line=dict(color="#ffffff", width=1)),
+                            hovertemplate="<b>%{x}</b><br>Combined: <b>%{y:,}</b><extra></extra>",
+                        ),
+                    ]
+                )
+                fig_comp.update_layout(
+                    barmode="group",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(l=10, r=10, t=10, b=10),
+                    height=200,
+                    legend=dict(orientation="h", y=1.2, x=0.05, font=dict(size=10, color="#475569")),
+                    xaxis=dict(tickfont=dict(size=10, family="Plus Jakarta Sans", color="#334155"), showgrid=False),
+                    yaxis=dict(showgrid=True, gridcolor="#f1f5f9", tickfont=dict(size=9)),
+                )
+                st.plotly_chart(fig_comp, use_container_width=True, config={"displayModeBar": False})
+            else:
+                st.markdown(
+                    """
+                    <div style="background:#ffffff; border:1px dashed #d1dcce; border-radius:10px; padding:2.5rem 1rem; text-align:center; height:200px; display:flex; flex-direction:column; justify-content:center;">
+                        <div style="color:#285C42; font-weight:700; font-size:0.95rem; margin-bottom:4px;">Awaiting Map & Combine</div>
+                        <div style="color:#64748b; font-size:0.8rem; max-width:380px; margin:0 auto;">
+                            Per-file compression efficiency comparing raw tokens against locally combined keys will appear here after execution.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
 
 
 # -----------------------------------------------------------------------------
@@ -1266,8 +1450,28 @@ def render_input_files_page(folder_path: Path) -> None:
                 for uf in uploaded_files:
                     target_p = folder_path / uf.name
                     target_p.write_bytes(uf.getvalue())
+                    if uf.name in st.session_state["hidden_files"]:
+                        st.session_state["hidden_files"].discard(uf.name)
+                st.session_state.pop("last_run", None)
                 st.toast(f"Saved {len(uploaded_files)} files", icon=":material/check:")
                 st.rerun()
+
+            c_smp, c_clr = st.columns(2, gap="small")
+            with c_smp:
+                if st.button("Load Samples", icon=":material/dataset:", key="inp_pg_load_samples", use_container_width=True, help="Load 11 benchmark sample text splits"):
+                    n_ld = load_sample_dataset(folder_path)
+                    st.session_state["hidden_files"].clear()
+                    st.session_state.pop("last_run", None)
+                    st.toast(f"Loaded {n_ld} sample text files", icon=":material/check:")
+                    st.rerun()
+            with c_clr:
+                if st.button("Clear Files", icon=":material/delete_sweep:", key="inp_pg_clear_files", use_container_width=True, help="Remove all text files in active folder"):
+                    n_cl = clear_folder_txt(folder_path)
+                    st.session_state["hidden_files"].clear()
+                    st.session_state.pop("last_run", None)
+                    st.toast(f"Cleared {n_cl} files", icon=":material/check:")
+                    st.rerun()
+
 
     with col_fld:
         with st.container(border=True):
@@ -1425,7 +1629,10 @@ def render_input_files_page(folder_path: Path) -> None:
 # -----------------------------------------------------------------------------
 # Page: Run MapReduce (Matches Reference Mockup)
 # -----------------------------------------------------------------------------
-def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path], current_threads: int) -> None:
+def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path], current_threads: int, active_folder: Path | None = None) -> None:
+    if active_folder is None:
+        active_folder = resolve_folder(st.session_state.get("input_folder_path", "input/"))
+
     # 1. Hero Header matching mockup
     stages = ["Input", "Map", "Combine", "Shuffle", "Reduce"]
     cur_stage_name = st.session_state.get("run_current_stage", "Combine & Partition" if result else "Ready")
@@ -1478,7 +1685,10 @@ def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path]
     """
     st.markdown(hero_html, unsafe_allow_html=True)
 
-    # 2. Execution Settings Card
+    # 2. File Drag-and-Drop Ingestion Strip on Run Page
+    render_file_upload_strip(page_key="run_page", active_folder=active_folder, active_files=active_files)
+
+    # 3. Execution Settings Card
     svg_gear = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#285C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'
     
     with st.container(border=True):
@@ -1527,13 +1737,13 @@ def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path]
             )
             st.caption("This will process all .txt files in the input folder.")
 
-    # 3. Handle MapReduce Execution Trigger
+    # 4. Handle MapReduce Execution Trigger
     if start_btn_clicked:
         try:
             target_fld = resolve_folder(run_folder_inp)
             cur_active_files = get_active_files(target_fld)
             if not cur_active_files:
-                st.error("No active .txt files found! Check folder or unhide files in 'Input Files'.")
+                st.error("No active .txt files found! Drag and drop files above or click 'Load Samples'.")
             else:
                 progress_placeholder = st.empty()
                 with st.spinner("Executing MapReduce stages..."):
@@ -1547,6 +1757,7 @@ def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path]
                 st.rerun()
         except Exception as ex:
             st.error(f"Execution error: {ex}")
+
 
     # 4. MapReduce Pipeline Progress Card
     svg_layers = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#285C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>'
@@ -1592,8 +1803,8 @@ def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path]
         """
         st.markdown(p_stages_html, unsafe_allow_html=True)
 
-        # Progress bar (60% default as in mockup, or 100% on complete)
-        progress_pct = 100 if (result and st.session_state.get("run_current_stage") == "Shuffle, Sort & Reduce") else 60
+        # Progress bar (0% when ready, 100% on complete)
+        progress_pct = 100 if result else 0
         st.markdown(
             f"""
             <div class="pipeline-progress-bar-wrap">
@@ -1616,8 +1827,8 @@ def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path]
 
         display_stage = cur_stage_name if result else "Ready to Run"
         files_proc_str = f"{len(active_files)} / {len(active_files)}" if result else f"0 / {len(active_files)}"
-        words_proc_val = f"{result.total_words:,}" if result else "2,850"
-        elapsed_val = f"{result.elapsed_seconds:.2f} s" if result else "0.86 s"
+        words_proc_val = f"{result.total_words:,}" if result else "0"
+        elapsed_val = f"{result.elapsed_seconds:.2f} s" if result else "0.00 s"
 
         svg_cur_stage = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#285C42" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>'
         svg_file_stat = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#285C42" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>'
@@ -1666,38 +1877,37 @@ def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path]
             svg_log = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#285C42" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>'
             st.markdown(f'<div class="run-card-heading">{svg_log}<span>Live Log</span></div>', unsafe_allow_html=True)
 
-            # Generate dynamic or realistic timestamps matching mockup
+            # Generate dynamic or realistic timestamps matching execution
             now_str = datetime.now().strftime("%H:%M")
             if result:
                 log_lines = [
                     f'<span class="live-log-ts">[{now_str}:15]</span> Starting MapReduce execution...',
-                    f'<span class="live-log-ts">[{now_str}:16]</span> Found {len(active_files)} text files in input folder',
+                    f'<span class="live-log-ts">[{now_str}:16]</span> Found {len(active_files)} text files in {active_folder.name}/',
                     f'<span class="live-log-ts">[{now_str}:16]</span> Starting mapper threads ({result.mapper_workers})...',
                 ]
                 for idx, t in enumerate(result.traces[:4]):
-                    log_lines.append(f'<span class="live-log-ts">[{now_str}:16]</span> Mapper {idx + 1} processing {t.filename} ({len(t.pairs)} words)')
+                    log_lines.append(f'<span class="live-log-ts">[{now_str}:16]</span> Mapper {idx + 1} processing {t.filename} ({len(t.pairs):,} words)')
                 log_lines.extend([
                     f'<span class="live-log-ts">[{now_str}:17]</span> Local combining completed',
                     f'<span class="live-log-ts">[{now_str}:17]</span> Partitioning words to 2 reducers (sum(ord) % 2)...',
                     f'<span class="live-log-ts">[{now_str}:17]</span> Shuffling and sorting values...',
-                    f'<span class="live-log-ts">[{now_str}:18]</span> Reducer 0 processing {len(result.reduced[0])} unique words',
-                    f'<span class="live-log-ts">[{now_str}:18]</span> Reducer 1 processing {len(result.reduced[1])} unique words',
+                    f'<span class="live-log-ts">[{now_str}:18]</span> Reducer 0 processing {len(result.reduced[0]):,} unique words',
+                    f'<span class="live-log-ts">[{now_str}:18]</span> Reducer 1 processing {len(result.reduced[1]):,} unique words',
                     f'<span class="live-log-ts">[{now_str}:18]</span> Wrote reducer_0.txt and reducer_1.txt successfully.',
                 ])
+            elif active_files:
+                tot_w_preview = sum(count_file_words(p) for p in active_files)
+                log_lines = [
+                    f'<span class="live-log-ts">[{now_str}:00]</span> Engine initialized and standby.',
+                    f'<span class="live-log-ts">[{now_str}:01]</span> Found {len(active_files)} active input split(s) in {active_folder.name}/',
+                    f'<span class="live-log-ts">[{now_str}:01]</span> Total raw words: {tot_w_preview:,}',
+                    f'<span class="live-log-ts">[{now_str}:02]</span> Ready to start MapReduce execution. Click "Start MapReduce" above.',
+                ]
             else:
                 log_lines = [
-                    f'<span class="live-log-ts">[10:24:15]</span> Starting MapReduce execution...',
-                    f'<span class="live-log-ts">[10:24:16]</span> Found 12 text files in input/',
-                    f'<span class="live-log-ts">[10:24:16]</span> Starting mapper threads (12)...',
-                    f'<span class="live-log-ts">[10:24:16]</span> Mapper 1 processing 01_technology.txt (398 words)',
-                    f'<span class="live-log-ts">[10:24:16]</span> Mapper 2 processing 02_education.txt (365 words)',
-                    f'<span class="live-log-ts">[10:24:16]</span> Mapper 3 processing 03_football.txt (402 words)',
-                    f'<span class="live-log-ts">[10:24:16]</span> Mapper 4 processing 04_environment.txt (371 words)',
-                    f'<span class="live-log-ts">[10:24:17]</span> Local combining completed',
-                    f'<span class="live-log-ts">[10:24:17]</span> Partitioning words to 2 reducers...',
-                    f'<span class="live-log-ts">[10:24:17]</span> Shuffling and sorting values...',
-                    f'<span class="live-log-ts">[10:24:18]</span> Reducer 0 processing 385 unique words',
-                    f'<span class="live-log-ts">[10:24:18]</span> Reducer 1 processing 356 unique words',
+                    f'<span class="live-log-ts">[{now_str}:00]</span> Engine standby.',
+                    f'<span class="live-log-ts">[{now_str}:00]</span> No input files detected in folder.',
+                    f'<span class="live-log-ts">[{now_str}:01]</span> Please drag & drop .txt files above or click "Load Samples".',
                 ]
 
             log_html = f'<div class="live-log-container">{"<br>".join(log_lines)}</div>'
@@ -1730,11 +1940,18 @@ def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path]
                     shuf_w = sum(len(v) for partition in result.shuffled for v in partition.values())
                     red_w = result.unique_words
                     y_vals = [total_w, total_w, comb_w, shuf_w, red_w]
+                elif active_files:
+                    y_vals = [sum(count_file_words(p) for p in active_files), 0, 0, 0, 0]
                 else:
-                    y_vals = [1440, 2612, 1280, 1050, 741]
+                    y_vals = [0, 0, 0, 0, 0]
             else:
-                n_files = len(active_files)
-                y_vals = [n_files, n_files, n_files, 2, 2]
+                if result:
+                    n_files = len(active_files)
+                    y_vals = [n_files, n_files, n_files, 2, 2]
+                elif active_files:
+                    y_vals = [len(active_files), 0, 0, 0, 0]
+                else:
+                    y_vals = [0, 0, 0, 0, 0]
 
             fig_stats = go.Figure(
                 data=[
@@ -2012,17 +2229,18 @@ active_paths = get_active_files(active_folder)
 page = st.session_state["current_page"]
 
 if page == "Home":
-    render_home_page(res_obj, active_paths, threads_selected)
+    render_home_page(res_obj, active_paths, threads_selected, active_folder)
 elif page == "Input Files":
     render_input_files_page(active_folder)
 elif page == "Run MapReduce":
-    render_run_mapreduce_page(res_obj, active_paths, threads_selected)
+    render_run_mapreduce_page(res_obj, active_paths, threads_selected, active_folder)
 elif page == "Stage Details":
     render_stage_details_page(res_obj, active_paths, threads_selected)
 elif page == "Results":
     render_results_page(res_obj, dl_list)
 elif page == "Visualizations":
-    render_home_page(res_obj, active_paths, threads_selected)
+    render_home_page(res_obj, active_paths, threads_selected, active_folder)
+
 else:
     # About
     render_editorial_header(

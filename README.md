@@ -27,11 +27,15 @@
 - **Pure Python Core (`engine.py`)**: Clean, dependency-free backend utilizing Python standard libraries (`ThreadPoolExecutor`, `collections.defaultdict`, `dataclasses`).
 - **Interactive SaaS Analytics Dashboard (`app.py`)**:
   - Warm minimalist SaaS theme (`#FAF9F6`, `#285C42`, `#DCE8DC`).
+  - **Cloud-Ready Drag-and-Drop Ingestion**: Drag and drop single or multiple `.txt` splits directly on both the **Home** and **Run MapReduce** pages.
+  - **1-Click Benchmark Dataset Loader**: Load bundled benchmark sample files or clear datasets in 1 click.
+  - **Dynamic Zero-State Architecture**: Clean, zero-state dashboard that dynamically updates without hardcoded fallback numbers when deployed to Streamlit Cloud.
   - Real-time live execution logs with green timestamps.
   - Interactive stage latency analysis measured in **milliseconds (`ms`)**.
   - Dynamic **Word Partition Route Inspector** to trace any token's routing.
   - **Per-File Data Reduction & Combiner Efficiency** chart.
   - Stateful Input File Manager with upload, hide, unhide, and delete controls.
+
 - **Dual Mode**:
   - Run via **Interactive Web GUI** (`streamlit run app.py`).
   - Run via **Headless CLI** (`python main.py`).
