@@ -116,6 +116,25 @@ def inject_custom_styles() -> None:
             }
         }
 
+        @media (max-width: 768px) {
+            [data-testid="stSidebar"] {
+                width: 280px !important;
+                min-width: 280px !important;
+                max-width: 85vw !important;
+                overflow-y: auto !important;
+                height: 100vh !important;
+                z-index: 99999 !important;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.15) !important;
+            }
+            [data-testid="stSidebar"] > div:first-child {
+                padding: 1rem 0.85rem !important;
+                overflow-y: auto !important;
+                height: auto !important;
+                min-height: 100vh !important;
+                background-color: var(--bg-sidebar) !important;
+            }
+        }
+
         [data-testid="stSidebar"] ::-webkit-scrollbar {
             width: 0px !important;
             display: none !important;
@@ -338,7 +357,13 @@ def inject_custom_styles() -> None:
             padding: 1.1rem 24px 2.5rem !important;
         }
 
-        /* Header Layout */
+        /* Header Layout & Brand Title */
+        .brand-title {
+            display: inline-block;
+            word-break: keep-all;
+            white-space: normal;
+        }
+
         .header-container {
             background: #ffffff;
             border: 1px solid var(--border-subtle);
@@ -349,6 +374,9 @@ def inject_custom_styles() -> None:
             align-items: center;
             justify-content: space-between;
             box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.03);
+        }
+        .header-text-block {
+            max-width: 720px;
         }
         .header-kicker {
             font-size: 0.72rem;
@@ -374,7 +402,8 @@ def inject_custom_styles() -> None:
             font-weight: 700;
             color: var(--text-main);
             margin: 0;
-            line-height: 1.1;
+            line-height: 1.12;
+            word-break: keep-all;
         }
         .header-sub {
             font-size: 1rem;
@@ -422,18 +451,23 @@ def inject_custom_styles() -> None:
             background: #cbd5e1;
         }
 
-        /* KPI Stat Cards */
+        /* KPI Stat Cards (4 desktop -> 2 tablet/mobile down to 340px -> 1 narrow) */
         .kpi-row {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 0.9rem;
             margin-bottom: 1.1rem;
         }
-        @media (max-width: 900px) {
-            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+        @media (max-width: 1024px) {
+            .kpi-row {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
         }
-        @media (max-width: 520px) {
-            .kpi-row { grid-template-columns: 1fr; }
+        @media (max-width: 340px) {
+            .kpi-row {
+                grid-template-columns: 1fr;
+            }
         }
         .kpi-box {
             background: #ffffff;
@@ -444,6 +478,7 @@ def inject_custom_styles() -> None:
             align-items: center;
             gap: 1rem;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+            min-width: 0;
         }
         .kpi-icon {
             width: 44px;
@@ -467,6 +502,7 @@ def inject_custom_styles() -> None:
             color: var(--text-main);
             line-height: 1.1;
             margin: 2px 0;
+            word-break: break-all;
         }
         .kpi-sub {
             font-size: 0.7rem;
@@ -482,29 +518,27 @@ def inject_custom_styles() -> None:
             margin-bottom: 1.1rem;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.02);
         }
-        .pipeline-grid {
+        .pipeline-grid, .run-stages-grid {
             display: flex;
-            align-items: center;
+            align-items: stretch;
             justify-content: space-between;
             gap: 0.7rem;
             margin-top: 0.8rem;
         }
-        @media (max-width: 950px) {
-            .pipeline-grid { flex-direction: column; align-items: stretch; }
-        }
-        .stage-box {
+        .stage-box, .pipeline-stage-box {
             flex: 1;
             border-radius: 12px;
             padding: 0.95rem 0.75rem;
             text-align: center;
             border: 1px solid transparent;
             background: #f8faf7;
+            min-width: 0;
         }
-        .stage-box.stage-1 { background: #f0f7f3; border-color: #d1e8db; }
-        .stage-box.stage-2 { background: #fdfaf2; border-color: #f7e8c8; }
-        .stage-box.stage-3 { background: #f2f7fd; border-color: #cfe1f8; }
-        .stage-box.stage-4 { background: #f8f3fd; border-color: #e5d4f9; }
-        .stage-box.stage-5 { background: #fdf2f4; border-color: #f9d3da; }
+        .stage-box.stage-1, .pipeline-stage-box.stage-input { background: #f0f7f3; border-color: #d1e8db; }
+        .stage-box.stage-2, .pipeline-stage-box.stage-map { background: #fdfaf2; border-color: #f7e8c8; }
+        .stage-box.stage-3, .pipeline-stage-box.stage-parallel { background: #f2f7fd; border-color: #cfe1f8; }
+        .stage-box.stage-4, .pipeline-stage-box.stage-combine { background: #f8f3fd; border-color: #e5d4f9; }
+        .stage-box.stage-5, .pipeline-stage-box.stage-reduce { background: #fdf2f4; border-color: #f9d3da; }
         .stage-badge {
             width: 26px;
             height: 26px;
@@ -515,6 +549,13 @@ def inject_custom_styles() -> None:
             font-weight: 800;
             font-size: 0.8rem;
             color: #ffffff;
+            flex-shrink: 0;
+        }
+        .stage-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
         }
         .stage-name {
             font-weight: 700;
@@ -531,9 +572,95 @@ def inject_custom_styles() -> None:
             color: #94a3b8;
             font-size: 1.1rem;
             font-weight: 700;
+            align-self: center;
         }
+
+        /* Responsive Breakpoints for Mobile & Tablet */
         @media (max-width: 950px) {
-            .arrow-sep { text-align: center; transform: rotate(90deg); }
+            .pipeline-grid, .run-stages-grid {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 6px !important;
+            }
+            .stage-box, .pipeline-stage-box {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                text-align: left !important;
+                padding: 0.65rem 0.85rem !important;
+                gap: 12px !important;
+            }
+            .stage-badge {
+                margin: 0 !important;
+                flex-shrink: 0 !important;
+            }
+            .stage-info {
+                flex: 1 !important;
+                min-width: 0 !important;
+            }
+            .stage-name {
+                margin-bottom: 0.15rem !important;
+                font-size: 0.82rem !important;
+            }
+            .stage-text {
+                font-size: 0.7rem !important;
+                line-height: 1.3 !important;
+            }
+            .arrow-sep {
+                text-align: center !important;
+                transform: rotate(90deg) !important;
+                margin: 1px auto !important;
+                font-size: 0.85rem !important;
+                opacity: 0.6 !important;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .block-container {
+                padding: 0.75rem 12px 2rem !important;
+            }
+            .header-container, .run-header-hero {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                padding: 1.1rem 1rem !important;
+                gap: 12px !important;
+            }
+            .header-title {
+                font-size: clamp(1.65rem, 6.2vw, 1.95rem) !important;
+                line-height: 1.15 !important;
+                word-break: keep-all !important;
+            }
+            .header-checklist {
+                flex-direction: row !important;
+                flex-wrap: wrap !important;
+                width: 100% !important;
+                min-width: auto !important;
+                padding: 0.6rem 0.85rem !important;
+                gap: 8px 14px !important;
+            }
+            .checklist-item {
+                font-size: 0.74rem !important;
+            }
+            .kpi-box {
+                padding: 0.75rem 0.85rem !important;
+                gap: 0.75rem !important;
+            }
+            .kpi-icon {
+                width: 36px !important;
+                height: 36px !important;
+            }
+            .kpi-value {
+                font-size: 1.25rem !important;
+            }
+            .kpi-label {
+                font-size: 0.68rem !important;
+            }
+            .hero-cubes-wrap {
+                display: none !important;
+            }
+            .desktop-spacer {
+                display: none !important;
+            }
         }
 
         /* Top Words Table */
@@ -623,11 +750,32 @@ def inject_custom_styles() -> None:
             grid-template-columns: repeat(4, 1fr);
             gap: 0.85rem;
         }
-        @media (max-width: 900px) {
-            .exec-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        @media (max-width: 1024px) {
+            .exec-kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
         }
-        @media (max-width: 520px) {
-            .exec-kpi-grid { grid-template-columns: 1fr; }
+        @media (max-width: 340px) {
+            .exec-kpi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 767px) {
+            .exec-kpi-item {
+                padding: 0.75rem 0.85rem !important;
+                gap: 0.75rem !important;
+            }
+            .exec-kpi-icon {
+                width: 36px !important;
+                height: 36px !important;
+            }
+            .exec-kpi-val {
+                font-size: 1.1rem !important;
+            }
+            .exec-kpi-label {
+                font-size: 0.66rem !important;
+            }
         }
         .exec-kpi-item {
             background: #ffffff;
@@ -638,6 +786,69 @@ def inject_custom_styles() -> None:
             align-items: center;
             gap: 0.85rem;
             box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+            min-width: 0;
+        }
+
+        /* Word Tracer Grid */
+        .tracer-grid {
+            background: #ffffff;
+            border: 1px solid #dce8da;
+            border-radius: 12px;
+            padding: 1rem;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        @media (max-width: 767px) {
+            .tracer-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+        }
+        @media (max-width: 360px) {
+            .tracer-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* File Card Item Styles */
+        .file-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+            overflow: hidden;
+        }
+        .file-item-title {
+            font-size: 0.85rem;
+            color: var(--text-main);
+            word-break: break-all;
+        }
+        .file-item-meta {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .file-idx {
+            color: var(--primary-green);
+            font-size: 0.76rem;
+            font-weight: 700;
+            margin-right: 4px;
+        }
+
+        /* About Mentor Card */
+        .about-mentor-card {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 0.4rem 0.2rem;
+        }
+        @media (max-width: 580px) {
+            .about-mentor-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 14px;
+            }
         }
         .exec-kpi-icon {
             width: 40px;
@@ -901,9 +1112,9 @@ def render_editorial_header(page_title: str, subtitle: str, description: str, ac
 
     html_code = (
         f'<div class="header-container">'
-        f'<div>'
+        f'<div class="header-text-block">'
         f'<div class="header-kicker">DISTRIBUTED DATA PROCESSING</div>'
-        f'<h1 class="header-title">{page_title}</h1>'
+        f'<h1 class="header-title"><span class="brand-title">{page_title}</span></h1>'
         f'<div class="header-sub">{subtitle}</div>'
         f'<p class="header-desc">{description}</p>'
         f'</div>'
@@ -916,9 +1127,17 @@ def render_editorial_header(page_title: str, subtitle: str, description: str, ac
 # -----------------------------------------------------------------------------
 # Component: 4 KPI Cards (Clean Green SVG Icons - Zero Emojis)
 # -----------------------------------------------------------------------------
-def render_kpi_cards(total_files: int, total_words: int, unique_words: int, elapsed_time: float, threads: int) -> None:
-    time_str = f"{elapsed_time:.2f} s" if elapsed_time > 0 else "—"
-    thread_sub = f"using {threads} threads" if elapsed_time > 0 else "ready to process"
+def render_kpi_cards(total_files: int, total_words: int, unique_words: int, elapsed_time: float, threads: int, is_executed: bool = False) -> None:
+    if is_executed:
+        uniq_display = f"{unique_words:,}"
+        time_str = f"{elapsed_time:.2f} s" if elapsed_time > 0 else "0.00 s"
+        thread_sub = f"using {threads} threads"
+        uniq_sub = "different words"
+    else:
+        uniq_display = "Pending"
+        time_str = "—"
+        thread_sub = "ready to process"
+        uniq_sub = "awaiting run"
 
     svg_files = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#285C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>'
     svg_words = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#285C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>'
@@ -937,7 +1156,7 @@ def render_kpi_cards(total_files: int, total_words: int, unique_words: int, elap
         f'</div>'
         f'<div class="kpi-box">'
         f'<div class="kpi-icon" style="background:#f3eefa;">{svg_uniq}</div>'
-        f'<div><div class="kpi-label">Unique Words</div><div class="kpi-value">{unique_words:,}</div><div class="kpi-sub">different words</div></div>'
+        f'<div><div class="kpi-label">Unique Words</div><div class="kpi-value">{uniq_display}</div><div class="kpi-sub">{uniq_sub}</div></div>'
         f'</div>'
         f'<div class="kpi-box">'
         f'<div class="kpi-icon" style="background:#fef5e9;">{svg_clock}</div>'
@@ -961,32 +1180,32 @@ def render_pipeline_card() -> None:
         f'<div class="pipeline-grid">'
         f'<div class="stage-box stage-1">'
         f'<div class="stage-badge" style="background:#285C42;">1</div>'
-        f'<div class="stage-name">Input</div>'
-        f'<div class="stage-text">Read text files<br>(each file = one split)</div>'
+        f'<div class="stage-info"><div class="stage-name">Input</div>'
+        f'<div class="stage-text">Read text files<br>(each file = one split)</div></div>'
         f'</div>'
         f'<span class="arrow-sep">→</span>'
         f'<div class="stage-box stage-2">'
         f'<div class="stage-badge" style="background:#d97706;">2</div>'
-        f'<div class="stage-name">Map</div>'
-        f'<div class="stage-text">Emit (word, 1)<br>for each word</div>'
+        f'<div class="stage-info"><div class="stage-name">Map</div>'
+        f'<div class="stage-text">Emit (word, 1)<br>for each word</div></div>'
         f'</div>'
         f'<span class="arrow-sep">→</span>'
         f'<div class="stage-box stage-3">'
         f'<div class="stage-badge" style="background:#2563eb;">3</div>'
-        f'<div class="stage-name">Parallel Execution</div>'
-        f'<div class="stage-text">Run mappers concurrently<br>using threads</div>'
+        f'<div class="stage-info"><div class="stage-name">Parallel Execution</div>'
+        f'<div class="stage-text">Run mappers concurrently<br>using threads</div></div>'
         f'</div>'
         f'<span class="arrow-sep">→</span>'
         f'<div class="stage-box stage-4">'
         f'<div class="stage-badge" style="background:#9333ea;">4</div>'
-        f'<div class="stage-name">Combine & Partition</div>'
-        f'<div class="stage-text">Local aggregation and<br>send words to 2 reducers</div>'
+        f'<div class="stage-info"><div class="stage-name">Combine & Partition</div>'
+        f'<div class="stage-text">Local aggregation and<br>send words to 2 reducers</div></div>'
         f'</div>'
         f'<span class="arrow-sep">→</span>'
         f'<div class="stage-box stage-5">'
         f'<div class="stage-badge" style="background:#e11d48;">5</div>'
-        f'<div class="stage-name">Shuffle, Sort & Reduce</div>'
-        f'<div class="stage-text">Group, sort and sum<br>values for each word</div>'
+        f'<div class="stage-info"><div class="stage-name">Shuffle, Sort & Reduce</div>'
+        f'<div class="stage-text">Group, sort and sum<br>values for each word</div></div>'
         f'</div>'
         f'</div>'
         f'</div>'
@@ -1109,7 +1328,7 @@ def render_home_page(result: RunResult | None, active_files: list[Path], threads
         uniq_words = 0
         exec_time = 0.0
 
-    render_kpi_cards(tot_files, tot_words, uniq_words if result else 0, exec_time, threads)
+    render_kpi_cards(tot_files, tot_words, uniq_words if result else 0, exec_time, threads, is_executed=(result is not None))
     render_pipeline_card()
 
     if not result:
@@ -1343,7 +1562,7 @@ def render_home_page(result: RunResult | None, active_files: list[Path], threads
                                 </div>
                             </div>
                         </div>
-                        <div style="background:#f8faf7; border:1px solid #eef2ec; border-radius:8px; padding:8px 10px; font-size:0.75rem; color:#475569;">
+                        <div style="background:#f8faf7; border:1px solid #eef2ec; border-radius:8px; padding:8px 10px; font-size:0.75rem; color:#475569; overflow-x:auto; word-break:break-word;">
                             <b>Hash Formula:</b> <code>sum(ord('{searched_word}')) % 2</code> = <code>{ascii_sum} % 2</code> = <b>{dest_reducer}</b>
                         </div>
                     </div>
@@ -1519,43 +1738,45 @@ def render_input_files_page(folder_path: Path) -> None:
                     is_hidden = file_path.name in hidden_set
                     words_count = count_file_words(file_path)
 
-                    row_c1, row_c2, row_c3, row_c4 = st.columns([3.5, 1.2, 1.3, 1.1])
+                    status_color = "#94a3b8" if is_hidden else "#18232B"
+                    st_badge = " (Hidden)" if is_hidden else ""
 
-                    with row_c1:
-                        status_color = "#94a3b8" if is_hidden else "#18232B"
-                        st_badge = " (Hidden)" if is_hidden else ""
-                        st.markdown(
-                            f"<span style='color:#64748b; font-size:0.78rem; margin-right:5px;'>#{idx}</span>"
-                            f"<b style='color:{status_color}; font-size:0.84rem;'>{file_path.name}</b>"
-                            f"<span style='font-size:0.7rem; color:#d97706; font-weight:600;'>{st_badge}</span>",
-                            unsafe_allow_html=True,
-                        )
-                    with row_c2:
-                        st.caption(f"{words_count:,} w")
-                    with row_c3:
-                        btn_label = "Unhide" if is_hidden else "Hide"
-                        btn_icon = ":material/visibility:" if is_hidden else ":material/visibility_off:"
-                        if st.button(btn_label, key=f"hide_btn_{file_path.name}", icon=btn_icon):
-                            if is_hidden:
-                                hidden_set.remove(file_path.name)
-                                st.toast(f"Unhid {file_path.name}")
-                            else:
-                                hidden_set.add(file_path.name)
-                                st.toast(f"Hidden {file_path.name}")
-                            st.session_state["hidden_files"] = hidden_set
-                            st.rerun()
+                    with st.container(border=True):
+                        c_info, c_actions = st.columns([3, 2])
+                        with c_info:
+                            st.markdown(
+                                f"<div class='file-item-info'>"
+                                f"<div class='file-item-title'><span class='file-idx'>#{idx}</span> <b style='color:{status_color};'>{file_path.name}</b><span style='font-size:0.7rem; color:#d97706; font-weight:600;'>{st_badge}</span></div>"
+                                f"<div class='file-item-meta'>{words_count:,} words</div>"
+                                f"</div>",
+                                unsafe_allow_html=True,
+                            )
+                        with c_actions:
+                            b1, b2 = st.columns(2)
+                            with b1:
+                                btn_label = "Unhide" if is_hidden else "Hide"
+                                btn_icon = ":material/visibility:" if is_hidden else ":material/visibility_off:"
+                                if st.button(btn_label, key=f"hide_btn_{file_path.name}", icon=btn_icon, use_container_width=True):
+                                    if is_hidden:
+                                        hidden_set.remove(file_path.name)
+                                        st.toast(f"Unhid {file_path.name}")
+                                    else:
+                                        hidden_set.add(file_path.name)
+                                        st.toast(f"Hidden {file_path.name}")
+                                    st.session_state["hidden_files"] = hidden_set
+                                    st.rerun()
 
-                    with row_c4:
-                        if st.button("Delete", key=f"del_btn_{file_path.name}", icon=":material/delete_outline:", help=f"Delete {file_path.name}"):
-                            try:
-                                file_path.unlink()
-                                if file_path.name in hidden_set:
-                                    hidden_set.remove(file_path.name)
-                                st.session_state.pop("last_run", None)
-                                st.toast(f"Deleted {file_path.name}")
-                                st.rerun()
-                            except Exception as err:
-                                st.error(f"Error: {err}")
+                            with b2:
+                                if st.button("Delete", key=f"del_btn_{file_path.name}", icon=":material/delete_outline:", help=f"Delete {file_path.name}", use_container_width=True):
+                                    try:
+                                        file_path.unlink()
+                                        if file_path.name in hidden_set:
+                                            hidden_set.remove(file_path.name)
+                                        st.session_state.pop("last_run", None)
+                                        st.toast(f"Deleted {file_path.name}")
+                                        st.rerun()
+                                    except Exception as err:
+                                        st.error(f"Error: {err}")
 
     # Dataset Summary
     with col_sum:
@@ -1669,16 +1890,16 @@ def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path]
 
     hero_html = f"""
     <div class="run-header-hero">
-        <div style="z-index:1; max-width:620px;">
+        <div class="header-text-block" style="z-index:1; max-width:620px;">
             <div class="header-kicker">DISTRIBUTED DATA PROCESSING</div>
-            <h1 class="header-title" style="margin: 3px 0 6px 0;">Run MapReduce</h1>
+            <h1 class="header-title" style="margin: 3px 0 6px 0;"><span class="brand-title">Run MapReduce</span></h1>
             <div class="header-sub" style="margin: 0 0 8px 0; font-size:1.02rem;">Execute the full MapReduce pipeline</div>
             <p class="header-desc">
                 Process the selected text files using multiple mapper threads and 2 reducers. Monitor the real-time progress and view detailed logs for each stage.
             </p>
         </div>
-        <div style="display:flex; align-items:center; gap:24px; z-index:1;">
-            <div style="display:flex; align-items:center;">{svg_cubes}</div>
+        <div class="header-right-side" style="display:flex; align-items:center; gap:20px; z-index:1;">
+            <div class="hero-cubes-wrap" style="display:flex; align-items:center;">{svg_cubes}</div>
             <div class="header-checklist">{checklist_html}</div>
         </div>
     </div>
@@ -1727,7 +1948,7 @@ def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path]
             st.selectbox("Number of Reducers", options=[2], index=0, disabled=True, key="run_page_reducers_sel")
             st.caption("Words will be partitioned to 2 reducers")
         with c_set4:
-            st.write('<div style="height:28px;"></div>', unsafe_allow_html=True)
+            st.write('<div class="desktop-spacer" style="height:28px;"></div>', unsafe_allow_html=True)
             start_btn_clicked = st.button(
                 "Start MapReduce",
                 type="primary",
@@ -1769,35 +1990,35 @@ def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path]
 
         # 5 Stages Cards Grid
         p_stages_html = """
-        <div style="display:flex; align-items:stretch; justify-content:space-between; gap:10px; margin-top:8px;">
+        <div class="run-stages-grid">
             <div class="pipeline-stage-box stage-input">
                 <div class="stage-badge" style="background:#285C42;">1</div>
-                <div class="stage-name">Input</div>
-                <div class="stage-text">Read text files<br>(each file = one split)</div>
+                <div class="stage-info"><div class="stage-name">Input</div>
+                <div class="stage-text">Read text files<br>(each file = one split)</div></div>
             </div>
             <span class="arrow-sep" style="align-self:center;">→</span>
             <div class="pipeline-stage-box stage-map">
                 <div class="stage-badge" style="background:#d97706;">2</div>
-                <div class="stage-name">Map</div>
-                <div class="stage-text">Emit (word, 1)<br>for each word</div>
+                <div class="stage-info"><div class="stage-name">Map</div>
+                <div class="stage-text">Emit (word, 1)<br>for each word</div></div>
             </div>
             <span class="arrow-sep" style="align-self:center;">→</span>
             <div class="pipeline-stage-box stage-parallel">
                 <div class="stage-badge" style="background:#2563eb;">3</div>
-                <div class="stage-name">Parallel Execution</div>
-                <div class="stage-text">Run mappers<br>concurrently using threads</div>
+                <div class="stage-info"><div class="stage-name">Parallel Execution</div>
+                <div class="stage-text">Run mappers<br>concurrently using threads</div></div>
             </div>
             <span class="arrow-sep" style="align-self:center;">→</span>
             <div class="pipeline-stage-box stage-combine">
                 <div class="stage-badge" style="background:#9333ea;">4</div>
-                <div class="stage-name">Combine & Partition</div>
-                <div class="stage-text">Local aggregation and<br>send words to 2 reducers</div>
+                <div class="stage-info"><div class="stage-name">Combine & Partition</div>
+                <div class="stage-text">Local aggregation and<br>send words to 2 reducers</div></div>
             </div>
             <span class="arrow-sep" style="align-self:center;">→</span>
             <div class="pipeline-stage-box stage-reduce">
                 <div class="stage-badge" style="background:#e11d48;">5</div>
-                <div class="stage-name">Shuffle, Sort & Reduce</div>
-                <div class="stage-text">Group, sort and sum<br>values for each word</div>
+                <div class="stage-info"><div class="stage-name">Shuffle, Sort & Reduce</div>
+                <div class="stage-text">Group, sort and sum<br>values for each word</div></div>
             </div>
         </div>
         """
@@ -2059,11 +2280,11 @@ def render_stage_details_page(result: RunResult | None, active_files: list[Path]
         ascii_sum = sum(ord(c) for c in test_word)
         dest = ascii_sum % 2
         st.markdown(
-            f'<div style="background:#ffffff; border:1px solid #dce8da; border-radius:12px; padding:1.1rem; display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">'
-            f'<div><span style="font-size:0.72rem; color:#64748b;">TARGET WORD</span><br><b style="font-size:1.05rem; color:#285C42;">"{test_word}"</b></div>'
-            f'<div><span style="font-size:0.72rem; color:#64748b;">ASCII SUM</span><br><b style="font-size:1.05rem; color:#18232B;">{ascii_sum}</b></div>'
-            f'<div><span style="font-size:0.72rem; color:#64748b;">MODULO % 2</span><br><b style="font-size:1.05rem; color:#9333ea;">{ascii_sum} % 2 = {dest}</b></div>'
-            f'<div><span style="font-size:0.72rem; color:#64748b;">ASSIGNED DESTINATION</span><br><b style="font-size:1.05rem; color:#285C42;">Reducer {dest}</b></div>'
+            f'<div class="tracer-grid">'
+            f'<div><span style="font-size:0.72rem; color:#64748b; font-weight:600; text-transform:uppercase;">TARGET WORD</span><br><b style="font-size:1.05rem; color:#285C42; word-break:break-all;">"{test_word}"</b></div>'
+            f'<div><span style="font-size:0.72rem; color:#64748b; font-weight:600; text-transform:uppercase;">ASCII SUM</span><br><b style="font-size:1.05rem; color:#18232B;">{ascii_sum}</b></div>'
+            f'<div><span style="font-size:0.72rem; color:#64748b; font-weight:600; text-transform:uppercase;">MODULO % 2</span><br><b style="font-size:1.05rem; color:#9333ea;">{ascii_sum} % 2 = {dest}</b></div>'
+            f'<div><span style="font-size:0.72rem; color:#64748b; font-weight:600; text-transform:uppercase;">ASSIGNED DESTINATION</span><br><b style="font-size:1.05rem; color:#285C42;">Reducer {dest}</b></div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -2265,7 +2486,7 @@ else:
     with st.container(border=True):
         st.markdown(
             """
-            <div style="display:flex; align-items:center; gap:20px; padding:0.4rem 0.2rem;">
+            <div class="about-mentor-card">
                 <a href="https://github.com/dr-ahmed-said" target="_blank" rel="noopener noreferrer">
                     <img src="https://avatars.githubusercontent.com/u/12073686?v=4" 
                          alt="Dr. Ahmed Said" 
