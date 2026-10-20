@@ -39,12 +39,39 @@ st.set_page_config(
     page_title="Mini MapReduce | Word Count Engine",
     page_icon=":material/layers:",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
+
+# -----------------------------------------------------------------------------
+# Per-Session Workspace Isolation
+# -----------------------------------------------------------------------------
+def get_session_input_dir() -> Path:
+    if "session_input_dir" not in st.session_state:
+        sess_dir = Path(tempfile.mkdtemp(prefix="mr_sess_"))
+        sess_in = sess_dir / "input"
+        sess_out = sess_dir / "output"
+        sess_in.mkdir(parents=True, exist_ok=True)
+        sess_out.mkdir(parents=True, exist_ok=True)
+        st.session_state["session_dir"] = str(sess_dir)
+        st.session_state["session_input_dir"] = str(sess_in)
+        st.session_state["session_output_dir"] = str(sess_out)
+    p = Path(st.session_state["session_input_dir"])
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def get_session_output_dir() -> Path:
+    if "session_output_dir" not in st.session_state:
+        get_session_input_dir()
+    p = Path(st.session_state["session_output_dir"])
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
 
 # -----------------------------------------------------------------------------
 # Session State Initialization
 # -----------------------------------------------------------------------------
+get_session_input_dir()
 if "hidden_files" not in st.session_state:
     st.session_state["hidden_files"] = set()
 if "current_page" not in st.session_state:
@@ -104,6 +131,8 @@ def inject_custom_styles() -> None:
             [data-testid="stSidebar"] {
                 height: 100vh !important;
                 overflow-y: hidden !important;
+                transform: none !important;
+                visibility: visible !important;
             }
             [data-testid="stSidebar"] > div:first-child {
                 padding: 0.85rem 0.85rem !important;
@@ -113,6 +142,17 @@ def inject_custom_styles() -> None:
                 flex-direction: column !important;
                 justify-content: flex-start !important;
                 background-color: var(--bg-sidebar) !important;
+            }
+            /* Web / Desktop: Sidebar CANNOT be closed - hide collapse trigger completely */
+            [data-testid="stSidebarCollapseButton"] {
+                display: none !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+            }
+            [data-testid="collapsedControl"] {
+                display: none !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
             }
         }
 
@@ -133,6 +173,35 @@ def inject_custom_styles() -> None:
                 min-height: 100vh !important;
                 background-color: var(--bg-sidebar) !important;
             }
+            /* Mobile: Show close button inside sidebar so user CAN close it */
+            [data-testid="stSidebarCollapseButton"] {
+                display: block !important;
+                visibility: visible !important;
+                pointer-events: auto !important;
+            }
+            [data-testid="stSidebarCollapseButton"] button {
+                background: #EEF3ED !important;
+                border: 1px solid #DCE8DC !important;
+                color: var(--primary-green) !important;
+                padding: 4px 8px !important;
+                border-radius: 6px !important;
+            }
+            [data-testid="stSidebarCollapseButton"] button:hover {
+                background-color: #DCE8DC !important;
+            }
+            /* Mobile: Show collapsed control (hamburger/open button) to open sidebar */
+            [data-testid="collapsedControl"] {
+                display: block !important;
+                visibility: visible !important;
+                pointer-events: auto !important;
+            }
+            [data-testid="collapsedControl"] button {
+                background: #FAF9F6 !important;
+                border: 1px solid #E5E8E2 !important;
+                color: var(--primary-green) !important;
+                border-radius: 8px !important;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+            }
         }
 
         [data-testid="stSidebar"] ::-webkit-scrollbar {
@@ -142,20 +211,6 @@ def inject_custom_styles() -> None:
         [data-testid="stSidebar"] {
             scrollbar-width: none !important;
             -ms-overflow-style: none !important;
-        }
-
-        /* Collapse Button in Top-Right Corner */
-        [data-testid="stSidebarCollapseButton"] button {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            color: var(--text-muted) !important;
-            padding: 4px !important;
-            border-radius: 6px !important;
-        }
-        [data-testid="stSidebarCollapseButton"] button:hover {
-            background-color: var(--nav-hover-bg) !important;
-            color: var(--primary-green) !important;
         }
 
         /* ------------------------------------------------------------------ */
@@ -950,8 +1005,20 @@ inject_custom_styles()
 # File Helpers (Honoring Hidden State)
 # -----------------------------------------------------------------------------
 def resolve_folder(folder_str: str) -> Path:
-    f = Path(folder_str.strip() or "input")
-    return f.resolve() if f.is_absolute() else (BASE_DIR / f).resolve()
+    f_str = folder_str.strip()
+    session_in = get_session_input_dir()
+    if not f_str or f_str in ("input", "input/", "input\\", "./input", ".\\input"):
+        return session_in
+    f = Path(f_str)
+    if f.is_absolute():
+        return f.resolve()
+    base_cand = (BASE_DIR / f).resolve()
+    if base_cand.exists() and base_cand != INPUT_DIR:
+        return base_cand
+    sess_cand = (session_in.parent / f).resolve()
+    if sess_cand.exists():
+        return sess_cand
+    return session_in
 
 
 def get_available_files(folder_path: Path) -> list[Path]:
@@ -1970,7 +2037,8 @@ def render_run_mapreduce_page(result: RunResult | None, active_files: list[Path]
                 with st.spinner("Executing MapReduce stages..."):
                     # Record progress steps
                     st.session_state["run_current_stage"] = "Map"
-                    res = run_mapreduce(cur_active_files, OUTPUT_DIR, max_workers=selected_th)
+                    session_out = get_session_output_dir()
+                    res = run_mapreduce(cur_active_files, session_out, max_workers=selected_th)
                     dls = [p.read_bytes() for p in res.output_paths]
                     st.session_state["last_run"] = {"result": res, "downloads": dls}
                     st.session_state["run_current_stage"] = "Shuffle, Sort & Reduce"
@@ -2429,7 +2497,8 @@ if sidebar_run:
             st.error("No active .txt files found! Check your folder or unhide files in 'Input Files'.")
         else:
             with st.spinner("Processing mappers and reducers..."):
-                res = run_mapreduce(active_paths, OUTPUT_DIR, max_workers=threads_selected)
+                session_out = get_session_output_dir()
+                res = run_mapreduce(active_paths, session_out, max_workers=threads_selected)
                 dls = [p.read_bytes() for p in res.output_paths]
                 st.session_state["last_run"] = {"result": res, "downloads": dls}
             st.toast("MapReduce run completed!", icon=":material/check:")
