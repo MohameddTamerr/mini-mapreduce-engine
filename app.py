@@ -11,6 +11,7 @@ Features:
 from __future__ import annotations
 
 import base64
+import hashlib
 import html
 import os
 import tempfile
@@ -1045,6 +1046,7 @@ def count_file_words(path: Path) -> int:
 
 def load_sample_dataset(target_dir: Path) -> int:
     target_dir.mkdir(parents=True, exist_ok=True)
+    clear_folder_txt(target_dir)
     count = 0
     import shutil
     source_dir = SAMPLE_DIR if SAMPLE_DIR.is_dir() else INPUT_DIR
@@ -1066,6 +1068,22 @@ def clear_folder_txt(target_dir: Path) -> int:
             except Exception:
                 pass
     return count
+
+
+def uploaded_files_signature(uploaded_files: list[Any]) -> tuple[tuple[str, str], ...]:
+    """Identify an upload selection by filename and content, not just filename."""
+    return tuple(
+        (f.name, hashlib.sha256(f.getvalue()).hexdigest())
+        for f in uploaded_files
+    )
+
+
+def replace_folder_with_uploads(target_dir: Path, uploaded_files: list[Any]) -> None:
+    """Make the selected uploads the complete active text dataset."""
+    target_dir.mkdir(parents=True, exist_ok=True)
+    clear_folder_txt(target_dir)
+    for uploaded_file in uploaded_files:
+        (target_dir / Path(uploaded_file.name).name).write_bytes(uploaded_file.getvalue())
 
 
 def render_file_upload_strip(page_key: str, active_folder: Path, active_files: list[Path]) -> None:
@@ -1093,7 +1111,7 @@ def render_file_upload_strip(page_key: str, active_folder: Path, active_files: l
                     </div>
                     <div>
                         <div style="font-weight:700; color:#18232B; font-size:0.95rem;">Dataset & File Drag-and-Drop</div>
-                        <div style="font-size:0.76rem; color:#64748b;">Drop single or multiple .txt files directly into the MapReduce engine or load the benchmark samples.</div>
+                        <div style="font-size:0.76rem; color:#64748b;">Uploading .txt files replaces the active dataset. Load benchmark samples to use the bundled examples.</div>
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
@@ -1118,16 +1136,14 @@ def render_file_upload_strip(page_key: str, active_folder: Path, active_files: l
             )
             if uploaded_files:
                 current_names = [f.name for f in uploaded_files]
-                if st.session_state.get(last_uploaded_key) != current_names:
-                    active_folder.mkdir(parents=True, exist_ok=True)
-                    for uf in uploaded_files:
-                        dest_file = active_folder / uf.name
-                        dest_file.write_bytes(uf.getvalue())
-                        if "hidden_files" in st.session_state:
-                            st.session_state["hidden_files"].discard(uf.name)
-                    st.session_state[last_uploaded_key] = current_names
+                signature = uploaded_files_signature(uploaded_files)
+                if st.session_state.get(last_uploaded_key) != signature:
+                    replace_folder_with_uploads(active_folder, uploaded_files)
+                    if "hidden_files" in st.session_state:
+                        st.session_state["hidden_files"].clear()
+                    st.session_state[last_uploaded_key] = signature
                     st.session_state.pop("last_run", None)
-                    st.toast(f"Uploaded {len(current_names)} file(s) to {active_folder.name}/", icon=":material/check:")
+                    st.toast(f"Replaced the active dataset with {len(current_names)} uploaded file(s)", icon=":material/check:")
                     st.rerun()
 
         with c_act:
@@ -1719,7 +1735,7 @@ def render_input_files_page(folder_path: Path) -> None:
                     <div style="width:34px; height:34px; border-radius:8px; background:#eaf4ed; display:grid; place-items:center;">{svg_folder}</div>
                     <div>
                         <div style="font-weight:700; color:#18232B; font-size:0.92rem;">Choose Files</div>
-                        <div style="font-size:0.74rem; color:#64748b;">Upload multiple .txt files or select a folder.</div>
+                        <div style="font-size:0.74rem; color:#64748b;">Upload multiple .txt files. The selected files replace the current dataset.</div>
                     </div>
                 </div>
                 """,
@@ -1733,14 +1749,14 @@ def render_input_files_page(folder_path: Path) -> None:
                 key="uploader_input_page",
             )
             if uploaded_files:
-                for uf in uploaded_files:
-                    target_p = folder_path / uf.name
-                    target_p.write_bytes(uf.getvalue())
-                    if uf.name in st.session_state["hidden_files"]:
-                        st.session_state["hidden_files"].discard(uf.name)
-                st.session_state.pop("last_run", None)
-                st.toast(f"Saved {len(uploaded_files)} files", icon=":material/check:")
-                st.rerun()
+                signature = uploaded_files_signature(uploaded_files)
+                if st.session_state.get("last_uploaded_names_input_page") != signature:
+                    replace_folder_with_uploads(folder_path, uploaded_files)
+                    st.session_state["hidden_files"].clear()
+                    st.session_state["last_uploaded_names_input_page"] = signature
+                    st.session_state.pop("last_run", None)
+                    st.toast(f"Replaced the active dataset with {len(uploaded_files)} uploaded file(s)", icon=":material/check:")
+                    st.rerun()
 
             c_smp, c_clr = st.columns(2, gap="small")
             with c_smp:
