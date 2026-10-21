@@ -262,11 +262,13 @@ Special thanks and sincere gratitude to **[Dr. Ahmed Said](https://github.com/dr
 ## License
 MIT License. Free for educational and research use.
 
+## Student Information
+
+- **Name:** Mohamed Tamer Mohamed Darwish
+- **Student ID:** 231006252
+
 ## Student Instructions
 
-
----
-
-## Original Repository Instructions
-
-
+1. Fork this repository to your GitHub account.
+2. Complete each programming task in its own folder in your fork, and push your work there.
+3. Add your name and student ID to this README in your fork.
