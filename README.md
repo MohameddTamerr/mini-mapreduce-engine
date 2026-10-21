@@ -136,8 +136,8 @@ Manage active text splits, upload new text files, inspect file size distribution
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/MohameddTamerr/mini-mapreduce-engine.git
-   cd mini-mapreduce-engine
+   git clone https://github.com/MohameddTamerr/Big-Data-Analytics.git
+   cd Big-Data-Analytics
    ```
 
 2. **Create and activate a virtual environment:**
@@ -261,5 +261,12 @@ Special thanks and sincere gratitude to **[Dr. Ahmed Said](https://github.com/dr
 
 ## License
 MIT License. Free for educational and research use.
+
+## Student Instructions
+
+
+---
+
+## Original Repository Instructions
 
 
