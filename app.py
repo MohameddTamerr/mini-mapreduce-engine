@@ -1804,15 +1804,32 @@ def render_input_files_page(folder_path: Path) -> None:
 
     with col_tbl:
         with st.container(border=True):
-            st.markdown(
-                f"""
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <span style="font-weight:700; font-size:0.95rem; color:#18232B;">Uploaded Files ({len(all_files)})</span>
-                    <span style="font-size:0.74rem; color:#64748b;">Use Hide to exclude or Delete</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            active_count = sum(file_path.name not in hidden_set for file_path in all_files)
+            header_col, delete_col = st.columns([2.2, 1], vertical_alignment="center")
+            with header_col:
+                st.markdown(
+                    f"""
+                    <div style="margin-bottom:10px;">
+                        <span style="font-weight:700; font-size:0.95rem; color:#18232B;">Active Files ({active_count})</span>
+                        <span style="font-size:0.74rem; color:#64748b;"> · {len(all_files)} total on disk. Hide excludes; Delete removes permanently.</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            with delete_col:
+                if all_files and st.button(
+                    "Delete All Files",
+                    key="delete_all_input_files",
+                    icon=":material/delete_sweep:",
+                    type="secondary",
+                    use_container_width=True,
+                ):
+                    deleted_count = clear_folder_txt(folder_path)
+                    hidden_set.clear()
+                    st.session_state["hidden_files"] = hidden_set
+                    st.session_state.pop("last_run", None)
+                    st.toast(f"Permanently deleted {deleted_count} .txt file(s)", icon=":material/check:")
+                    st.rerun()
 
             if not all_files:
                 st.info("No .txt files found. Add files above.")
@@ -1847,6 +1864,7 @@ def render_input_files_page(folder_path: Path) -> None:
                                         hidden_set.add(file_path.name)
                                         st.toast(f"Hidden {file_path.name}")
                                     st.session_state["hidden_files"] = hidden_set
+                                    st.session_state.pop("last_run", None)
                                     st.rerun()
 
                             with b2:
